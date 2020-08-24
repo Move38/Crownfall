@@ -324,7 +324,7 @@ void KingAnimation()
       score1 = OFF;
       score2 = OFF;
       score3 = CROWN_YELLOW;
-      darkestPoint = 125;
+      darkestPoint = 124;
       break;
 
     case 0:
