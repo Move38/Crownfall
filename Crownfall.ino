@@ -44,33 +44,68 @@ enum Teams
   BLUE_TRANSITION //Team for switching to blue safely.
 };
 
-byte health = 3;
+enum Bomb
+{
+  NO_BOMB,
+  HOLDING_BOMB,
+  GIVING_BOMB,
+};
+
+byte bombState = NO_BOMB;
+byte bombHealth = 3;
+
+byte kingHealth = 3;
 byte role = PAWN;
 byte team = RED_TEAM;
 byte gameState =  SETUP;
 Color teamColor = RED_COLOR;
 
-byte EncodeSignal()
+byte EncodeSetup()
 {
-  return (role << 3) + (team << 1);
+  return (gameState << 5) + (team << 3) + (role);
+}
+
+byte EncodePlay()
+{
+  return (gameState << 5) + (team << 4) + (bombState); //Add in bomb stuff from 1 to 3
+}
+
+byte GetState(byte input)
+{
+  return ((input >> 5) & 1);
+}
+
+byte GetBomb(byte input)
+{
+  if (gameState = SETUP) return NO_BOMB;
+  return ((input) & 3);
 }
 
 byte GetRole(byte input)
 {
-  return ((input >> 3) & 7);
+  return ((input) & 7);
 }
 
 byte GetTeam(byte input)
 {
-  return ((input >> 1) & 3);
+  if (GetState(input) == SETUP)
+  {
+    return ((input >> 3) & 3);
+  } else
+  {
+    return ((input >> 4) & 1);
+  }
 }
 
 void Reset()
 {
-  health = 3;
+  bombHealth = 2;
 
   role = RESET;
   gameState = SETUP;
+  bombState = NO_BOMB;
+
+  setValueSentOnAllFaces(EncodeSetup());
 }
 
 void setup()
@@ -80,8 +115,6 @@ void setup()
 
 void loop()
 {
-  setValueSentOnAllFaces(EncodeSignal());
-  
   switch (gameState)
   {
     case SETUP:
@@ -99,12 +132,12 @@ void loop()
   buttonDoubleClicked();
   buttonMultiClicked();
   buttonLongPressed();
-
-  
 }
 
 void SetupLoop()
 {
+  setValueSentOnAllFaces(EncodeSetup());
+
   /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RESETIING
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
@@ -115,13 +148,13 @@ void SetupLoop()
     {
       if (!isValueReceivedOnFaceExpired(face))
       {
-        if (GetRole(getLastValueReceivedOnFace(face)) >= 2) //If something around me isn't in reset or setup.
+        if (GetState(getLastValueReceivedOnFace(face)) == PLAY) //If something around me is in play mode.
         {
           role = RESET;
+          return;
         }
       }
     }
-    return;
   }
 
   /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -181,6 +214,12 @@ void SetupLoop()
       {
         role = GetRole(getLastValueReceivedOnFace(face)) + 1;
         gameState = PLAY;
+
+        //Check for special role variables (Alchemist, etc)
+        if (role == ALCHEMIST)
+        {
+          bombState = HOLDING_BOMB;
+        }
         return;
       }
     }
@@ -210,6 +249,7 @@ void SetupLoop()
 
 void PlayLoop()
 {
+  setValueSentOnAllFaces(EncodeSetup());
   /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RESET CHECKING
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
@@ -217,17 +257,88 @@ void PlayLoop()
   {
     if (!isValueReceivedOnFaceExpired(face))
     {
-      if (GetRole(getLastValueReceivedOnFace(face)) == RESET) //Neighbor is in reset mode.
+      if (GetState(getLastValueReceivedOnFace(face)) == SETUP) //Neighbor is in setup mode.
       {
-        Reset();
+        if (GetRole(getLastValueReceivedOnFace(face)) == RESET)
+        {
+          Reset();
+        }
         return;
+      } else
+      {
+        setValueSentOnAllFaces(EncodePlay());
       }
     }
   }
 
+
+  /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    BOMB CHECKING
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+  switch (bombState)
+  {
+    case (NO_BOMB):
+      {
+        FOREACH_FACE(face)
+        {
+          if (!isValueReceivedOnFaceExpired(face))
+          {
+            if (GetState(getLastValueReceivedOnFace(face)) == PLAY)
+            {
+              if (GetBomb(getLastValueReceivedOnFace(face)) == GIVING_BOMB)
+              {
+                bombState = HOLDING_BOMB;
+                bombHealth = 2;
+              }
+            }
+          }
+        }
+        break;
+      }
+
+    case (GIVING_BOMB):
+      {
+        FOREACH_FACE(face)
+        {
+          if (!isValueReceivedOnFaceExpired(face))
+          {
+            if (GetState(getLastValueReceivedOnFace(face)) == PLAY)
+            {
+              if (GetBomb(getLastValueReceivedOnFace(face)) == NO_BOMB)
+              {
+                bombState = NO_BOMB;
+              }
+            }
+          }
+        }
+        break;
+      }
+
+    case (HOLDING_BOMB):
+      {
+        bombState = GIVING_BOMB;
+        FOREACH_FACE(face)
+        {
+          if (!isValueReceivedOnFaceExpired(face))
+          {
+            bombState = HOLDING_BOMB;
+          }
+        }
+        break;
+      }
+  }
+
+
+
   /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     PLAYER INPUT
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+  if (buttonSingleClicked())
+  {
+    kingHealth--;
+    if (bombState != NO_BOMB) bombHealth--;
+  }
+
   if (buttonMultiClicked() && buttonClickCount() == 3)
   {
     Reset();
@@ -291,6 +402,14 @@ void DisplayLoop()
       QueenAnimation();
       break;
   }
+
+  /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    SPECIAL STATE ANIMATIONS
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+  if (bombState != NO_BOMB)
+  {
+    BombAnimation();
+  }
 }
 
 void KingAnimation()
@@ -301,7 +420,7 @@ void KingAnimation()
   Color score3;
   int PULSE_PERIOD;
 
-  switch (health)
+  switch (kingHealth)
   {
     case 3:
       PULSE_PERIOD = 1500;
@@ -465,5 +584,10 @@ void QueenAnimation()
   setColorOnFace(makeColorHSB(0, 0, currentBrightness), 2);
   setColorOnFace(makeColorHSB(0, 0, altBrightness), 3);
   setColorOnFace(makeColorHSB(0, 0, currentBrightness), 4);
+}
+
+void BombAnimation()
+{
+  setColorOnFace(dim(ALCHEMISTGREEN, map(sin8_C(millis() / bombHealth), -1, 1, 100, 255)), 0);
 }
 /**/
