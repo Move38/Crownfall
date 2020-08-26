@@ -81,7 +81,7 @@ void setup()
 void loop()
 {
   setValueSentOnAllFaces(EncodeSignal());
-  
+
   switch (gameState)
   {
     case SETUP:
@@ -100,7 +100,7 @@ void loop()
   buttonMultiClicked();
   buttonLongPressed();
 
-  
+
 }
 
 void SetupLoop()
@@ -232,6 +232,15 @@ void PlayLoop()
   {
     Reset();
   }
+
+  
+  if (buttonSingleClicked()) {
+    health = max(health - 1, 0);
+  }
+
+  if(buttonDoubleClicked()){
+    health = 3;
+    }
 }
 
 void DisplayLoop()
@@ -300,7 +309,7 @@ void KingAnimation()
   Color score2;
   Color score3;
   int PULSE_PERIOD;
-
+  
   switch (health)
   {
     case 3:
@@ -324,7 +333,7 @@ void KingAnimation()
       score1 = OFF;
       score2 = OFF;
       score3 = CROWN_YELLOW;
-      darkestPoint = 124;
+      darkestPoint = 125;
       break;
 
     case 0:
