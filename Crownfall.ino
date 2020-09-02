@@ -66,7 +66,6 @@ byte GetShieldState(byte data) {
 }
 
 void setupLoop() {
-
   /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     TEAM ASSIGNMENT
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
@@ -113,7 +112,6 @@ void setupLoop() {
       break;
   }
 
-
   //get triple clicked, become king
   if (buttonMultiClicked() && buttonClickCount() == 3) {
     gameState = KING;
@@ -144,6 +142,8 @@ void setupLoop() {
       }
     }
   }
+
+  shieldState = NOT_PROTECTED;
 }
 
 void assignLoop() {
@@ -206,27 +206,12 @@ void playLoop() {
         gameState = SETUP;
       }
 
-      if (neighborGameState == PLAY) {
-        if (playRole == CLERIC) {
-          if (shieldState == PROTECTING) {
-            if (GetShieldState(getLastValueReceivedOnFace(f)) == NOT_PROTECTED) {
-              divineIntervention--;
-              shieldState = EXHAUSTED;
-            }
-          }
-        }
-      }
+    }
+  }
 
-      if (GetShieldState(getLastValueReceivedOnFace(f)) == PROTECTING) {
-        if (shieldState == NOT_PROTECTED) {
-          shieldState = PROTECTED;
-        }
-      }
-    } else
-    {
-      if (playRole == CLERIC) {
-        shieldState = (divineIntervention > 0) ? PROTECTING : EXHAUSTED;
-      }
+  if (isAlone()) {
+    if (playRole == CLERIC) {
+      shieldState = (divineIntervention > 0) ? PROTECTING : EXHAUSTED;
     }
   }
 }
@@ -239,6 +224,25 @@ void CheckNeighbors()
       if (!isValueReceivedOnFaceExpired(face)) {//neighbor
         if (faceConnections[face] == false) {
           faceConnections[face] = true;
+
+          if (GetGameState(getLastValueReceivedOnFace(face)) == PLAY) {
+            if (playRole == CLERIC) {
+              if (shieldState == PROTECTING) {
+                if (GetShieldState(getLastValueReceivedOnFace(face)) == NOT_PROTECTED) {
+                  divineIntervention--;
+                  shieldState = EXHAUSTED;
+                }
+              }
+            } else
+            {
+              if (GetShieldState(getLastValueReceivedOnFace(face)) == PROTECTING) {
+                if (shieldState == NOT_PROTECTED) {
+                  shieldState = PROTECTED;
+                }
+              }
+            }
+          }
+
           connectedTimer.set(500);
         }
       } else
