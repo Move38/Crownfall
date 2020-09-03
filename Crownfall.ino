@@ -14,6 +14,8 @@ byte team = RED_TEAM;
 bool faceConnections[6];
 Timer connectedTimer;
 
+bool neighborShielded[6];
+
 enum shieldStates {EXHAUSTED, PROTECTING, NOT_PROTECTED, PROTECTED};
 byte shieldState = NOT_PROTECTED;
 byte divineIntervention  = 2;
@@ -181,6 +183,24 @@ void assignLoop() {
 }
 
 void playLoop() {
+  if (playRole == CLERIC) {
+    ClericPlayLoop();
+  } else
+  {
+    FOREACH_FACE(face) {
+      if (!isValueReceivedOnFaceExpired(face)) {
+        if (GetShieldState(getLastValueReceivedOnFace(face)) == PROTECTING) {
+          shieldState = PROTECTED;
+        }
+      }
+    }
+  }
+
+  //get triple clicked, go back to setup
+  if (buttonMultiClicked() && buttonClickCount() == 3) {
+    gameState = SETUP;
+  }
+
   if (buttonSingleClicked())
   {
     if (shieldState == PROTECTED) shieldState = NOT_PROTECTED;
@@ -192,20 +212,38 @@ void playLoop() {
     if (playRole == KING) kingHealth = 3;
   }
 
-  //get triple clicked, go back to setup
-  if (buttonMultiClicked() && buttonClickCount() == 3) {
-    gameState = SETUP;
-  }
+
 
   //find a neighbor in setup, go to that
   FOREACH_FACE(f) {
-
     if (!isValueReceivedOnFaceExpired(f)) {//neighbor!
       byte neighborGameState = GetGameState(getLastValueReceivedOnFace(f));
       if (neighborGameState == SETUP) {//this neighbor is telling me to go into setup
         gameState = SETUP;
       }
+    }
+  }
+}
 
+void ClericPlayLoop() {
+  FOREACH_FACE(face) {
+    if (!isValueReceivedOnFaceExpired(face)) {
+      if (shieldState == PROTECTING)
+      {
+        if (GetShieldState(face) == PROTECTED && neighborShielded[face])
+        {
+          shieldState = EXHAUSTED;
+          divineIntervention--;
+          neighborShielded[face] = false;
+        }
+      }
+      if (GetShieldState(face) == NOT_PROTECTED)
+      {
+        neighborShielded[face] = true;
+      }
+    } else
+    {
+      neighborShielded[face] = false;
     }
   }
 
@@ -216,7 +254,6 @@ void playLoop() {
   }
 }
 
-
 void CheckNeighbors()
 {
   if (connectedTimer.isExpired()) {
@@ -224,25 +261,6 @@ void CheckNeighbors()
       if (!isValueReceivedOnFaceExpired(face)) {//neighbor
         if (faceConnections[face] == false) {
           faceConnections[face] = true;
-
-          if (GetGameState(getLastValueReceivedOnFace(face)) == PLAY) {
-            if (playRole == CLERIC) {
-              if (shieldState == PROTECTING) {
-                if (GetShieldState(getLastValueReceivedOnFace(face)) == NOT_PROTECTED) {
-                  divineIntervention--;
-                  shieldState = EXHAUSTED;
-                }
-              }
-            } else
-            {
-              if (GetShieldState(getLastValueReceivedOnFace(face)) == PROTECTING) {
-                if (shieldState == NOT_PROTECTED) {
-                  shieldState = PROTECTED;
-                }
-              }
-            }
-          }
-
           connectedTimer.set(500);
         }
       } else
