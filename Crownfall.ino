@@ -3,7 +3,7 @@
    Created by Rob Canciello, Nicole Polidore,
    Jacob Surovsky, and Connor Wolf
  *********************************************/
-enum gameStates {SETUP, KING, SOLDIER, WIZARD, CLERIC, JESTER, QUEEN, PLAY};
+enum gameStates {SETUP, KING, SOLDIER, WIZARD, CLERIC, JESTER, QUEEN, RED_PLAY, BLUE_PLAY};
 byte gameState = SETUP;
 byte playRole = SETUP;
 byte kingHealth = 3;
@@ -14,11 +14,11 @@ byte team = RED_TEAM;
 bool faceConnections[6];
 Timer connectedTimer;
 
-bool neighborShielded[6];
+enum blessStates {EXHAUSTED, BLESSING, NOT_BLESSED, BLESSED};
+byte blessState = NOT_BLESSED;
+byte blessings = 2;
 
-enum shieldStates {EXHAUSTED, PROTECTING, NOT_PROTECTED, PROTECTED};
-byte shieldState = NOT_PROTECTED;
-byte divineIntervention  = 2;
+bool blessedNeighbors[6];
 
 Color teamColor = RED;
 
@@ -31,7 +31,8 @@ void loop() {
     case SETUP:
       setupLoop();
       break;
-    case PLAY:
+    case RED_PLAY:
+    case BLUE_PLAY:
       playLoop();
       break;
     default:
@@ -46,25 +47,28 @@ void loop() {
 }
 
 byte EncodeSignal() {
-  if (gameState != PLAY)
-    return (gameState << 3) + (team << 1);
+  if (gameState != RED_PLAY && gameState != BLUE_PLAY)
+    return (gameState << 2) + (team);
   else
-    return (gameState << 3) + (team << 2) + shieldState;
+    return (gameState << 2) + blessState;
 }
 
 byte GetGameState(byte data) {
-  return (data >> 3);
+  return (data >> 2);
 }
 
 byte GetTeamState(byte data) {
-  if (gameState != PLAY)
-    return ((data >> 1) & 3);
-  else
-    return ((data >> 2) & 1);
+  if (gameState != RED_PLAY && gameState != BLUE_PLAY)
+    return (data & 3);
+  else if (gameState == RED_PLAY) return RED_TEAM;
+  else return BLUE_TEAM;
+
 }
 
-byte GetShieldState(byte data) {
-  return (data & 3);
+byte GetBlessing(byte data) {
+  if (gameState == RED_PLAY || gameState == BLUE_PLAY)
+    return (data & 3);
+  else return 0;
 }
 
 void setupLoop() {
@@ -134,7 +138,7 @@ void setupLoop() {
   FOREACH_FACE(f) {
     if (!isValueReceivedOnFaceExpired(f)) {//neighbor!
       byte neighborGameState = GetGameState(getLastValueReceivedOnFace(f));
-      if (neighborGameState != SETUP && neighborGameState != PLAY) {//this neighbor is telling me to go into assignment
+      if (neighborGameState != SETUP && neighborGameState != RED_PLAY && neighborGameState != BLUE_PLAY) {//this neighbor is telling me to go into assignment
         //I get a temporary gamestate here that is roughly accurate, but it's refined later
         if (neighborGameState == QUEEN) {
           gameState = QUEEN;
@@ -145,7 +149,7 @@ void setupLoop() {
     }
   }
 
-  shieldState = NOT_PROTECTED;
+  blessState = NOT_BLESSED;
 }
 
 void assignLoop() {
@@ -160,7 +164,7 @@ void assignLoop() {
 
       if (neighborGameState == SETUP) {//is this neighbor in setup?
         neighborsInSetup = true;
-      } else if (neighborGameState != PLAY) {//is this neighbor in assignment?
+      } else if (neighborGameState != RED_PLAY && neighborGameState != BLUE_PLAY) {//is this neighbor in assignment?
 
         //is this neighbor lower than my lowest neighbor?
         if (neighborGameState < lowestNeighbor) {
@@ -176,24 +180,16 @@ void assignLoop() {
 
   if (neighborsInSetup == false) {
     playRole = gameState;
-    gameState = PLAY;
+    if (team == RED_TEAM) gameState = RED_PLAY;
+    else gameState = BLUE_PLAY;
   }
 
-  if (playRole == CLERIC) shieldState = NOT_PROTECTED;
+  if (playRole == CLERIC) blessState = EXHAUSTED;
 }
 
 void playLoop() {
   if (playRole == CLERIC) {
     ClericPlayLoop();
-  } else
-  {
-    FOREACH_FACE(face) {
-      if (!isValueReceivedOnFaceExpired(face)) {
-        if (GetShieldState(getLastValueReceivedOnFace(face)) == PROTECTING) {
-          shieldState = PROTECTED;
-        }
-      }
-    }
   }
 
   //get triple clicked, go back to setup
@@ -203,16 +199,14 @@ void playLoop() {
 
   if (buttonSingleClicked())
   {
-    if (shieldState == PROTECTED) shieldState = NOT_PROTECTED;
-    else if (playRole == KING) kingHealth--;
+    if (playRole == KING) kingHealth--;
+    else if (blessState == BLESSED) blessState = NOT_BLESSED;
   }
 
   if (buttonDoubleClicked())
   {
     if (playRole == KING) kingHealth = 3;
   }
-
-
 
   //find a neighbor in setup, go to that
   FOREACH_FACE(f) {
@@ -221,35 +215,35 @@ void playLoop() {
       if (neighborGameState == SETUP) {//this neighbor is telling me to go into setup
         gameState = SETUP;
       }
+
+      if (GetBlessing(getLastValueReceivedOnFace(f)) == BLESSING) {
+        blessState = BLESSED;
     }
   }
 }
+}
 
 void ClericPlayLoop() {
-  FOREACH_FACE(face) {
-    if (!isValueReceivedOnFaceExpired(face)) {
-      if (shieldState == PROTECTING)
+  if (isAlone())
+  {
+    blessState = BLESSING;
+  }
+
+  for (byte face = 0; face != 6; face++) {
+    if (faceConnections[face] == true) { //I am connected to a neighbor on face X.
+      if (GetBlessing(getLastValueReceivedOnFace(face)) == BLESSED) //neighbor has been blessed.
       {
-        if (GetShieldState(face) == PROTECTED && neighborShielded[face])
+        if (blessedNeighbors[face] != true) //we didn't know he was blessed.
         {
-          shieldState = EXHAUSTED;
-          divineIntervention--;
-          neighborShielded[face] = false;
+          blessings--;
+          blessedNeighbors[face] = true;
         }
-      }
-      if (GetShieldState(face) == NOT_PROTECTED)
-      {
-        neighborShielded[face] = true;
+      } else if (GetBlessing(getLastValueReceivedOnFace(face)) == NOT_BLESSED) { //neighbor at Face X is not blessed.
+        blessedNeighbors[face] = false;
       }
     } else
     {
-      neighborShielded[face] = false;
-    }
-  }
-
-  if (isAlone()) {
-    if (playRole == CLERIC) {
-      shieldState = (divineIntervention > 0) ? PROTECTING : EXHAUSTED;
+      blessedNeighbors[face] = true; //By default, I assume everyone is blessed!
     }
   }
 }
@@ -276,7 +270,8 @@ void displayLoop() {
     case SETUP:
       setColor(dim(teamColor, 128));
       break;
-    case PLAY:
+    case RED_PLAY:
+    case BLUE_PLAY:
       roleDisplay();
       break;
     default:
@@ -314,7 +309,7 @@ void roleDisplay() {
       setColor(teamColor);
       setColorOnFace(OFF, 4);
       setColorOnFace(OFF, 5);
-      if (divineIntervention > 0) divineShield();
+      if (blessState == BLESSING) divineShield();
       break;
     case JESTER:
       setColor(teamColor);
@@ -325,7 +320,7 @@ void roleDisplay() {
       break;
   }
 
-  if (shieldState == PROTECTED) divineShield();
+  if (blessState == BLESSED) divineShield();
 }
 
 void divineShield() {
