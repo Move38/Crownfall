@@ -43,6 +43,11 @@ void loop() {
   CheckNeighbors();
   displayLoop();
 
+  buttonSingleClicked();
+  buttonDoubleClicked();
+  buttonMultiClicked();
+  buttonLongPressed();
+
   setValueSentOnAllFaces(EncodeSignal());
 }
 
@@ -216,11 +221,13 @@ void playLoop() {
         gameState = SETUP;
       }
 
-      if (GetBlessing(getLastValueReceivedOnFace(f)) == BLESSING) {
-        blessState = BLESSED;
+      if (neighborGameState == RED_PLAY || neighborGameState == BLUE_PLAY) {
+        if (GetBlessing(getLastValueReceivedOnFace(f)) == BLESSING) {
+          blessState = BLESSED;
+        }
+      }
     }
   }
-}
 }
 
 void ClericPlayLoop() {
