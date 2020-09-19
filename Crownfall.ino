@@ -226,7 +226,8 @@ void playLoop() {
   }
 
   //~~CLERIC SPECIFIC INTERACTIONS~~
-  if (playRole == CLERIC) {
+  if (playRole == CLERIC) 
+  {
     ClericPlayLoop();
   }
 
@@ -333,8 +334,9 @@ void roleDisplay() {
       Jester();
       break;
     case CLERIC:
-      setColor(teamColor);
-      setColorOnFace(OFF, 5);
+      Cleric();
+      //setColor(teamColor);
+      //setColorOnFace(OFF, 5);
       if (blessState == BLESSING) divineShield();
       break;
     case GIANT:
@@ -513,15 +515,7 @@ void Cleric() {
     animationTimer.set(CLERIC_TIME);
   }
   
-
-  setColor(OFF);
-
   setColor(teamColor);
-
-  setColorOnFace(dim(teamColor, 200), (healingFace + 1) % 6);
-  setColorOnFace(dim(teamColor, 150), (healingFace + 2) % 6);
-  setColorOnFace(dim(teamColor, 200), (healingFace + 4) % 6);
-  setColorOnFace(dim(teamColor, 150), (healingFace + 5) % 6);
 
   switch (blessings) {
     case 2:
