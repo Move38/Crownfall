@@ -7,7 +7,7 @@
 #define BLUE_COLOR makeColorHSB(115, 255, 255)
 #define CROWN_YELLOW makeColorHSB(50, 200, 255)
 #define ALCHEMISTGREEN (makeColorHSB(65, 255, 255))
-enum gameStates {SETUP, KING, SOLDIER, ASSASSIN, JESTER, WIZARD, CLERIC, NECROMANCER, GIANT, CAVALRY, RED_PLAY, BLUE_PLAY};
+enum gameStates {SETUP, KING, SOLDIER, ASSASSIN, WIZARD, JESTER, CLERIC, NECROMANCER, GIANT, CAVALRY, RED_PLAY, BLUE_PLAY};
 byte gameState = SETUP;
 byte playRole = SETUP;
 byte health = 3;
@@ -34,6 +34,7 @@ void loop() {
   // put your main code here, to run repeatedly:
   switch (gameState) {
     case SETUP:
+      health = 3;
       setupLoop();
       break;
     case RED_PLAY:
@@ -214,15 +215,14 @@ void playLoop() {
     gameState = SETUP;
   }
 
-  if (buttonSingleClicked())
-  {
-    if (playRole == KING) health--;
-    else if (blessState == BLESSED) blessState = NOT_BLESSED;
-  }
-
   if (buttonDoubleClicked())
   {
-    if (playRole == KING) health = 3;
+    if (playRole == KING) 
+    {
+         health--;
+    }
+
+    else if (blessState == BLESSED) blessState = NOT_BLESSED;
   }
 
   //~~CLERIC SPECIFIC INTERACTIONS~~
@@ -481,6 +481,8 @@ Color ballColor;
 
 void Jester() {
 
+  
+
   if (animationTimer.isExpired()) {
     ballFace = ballFace + (1 * ballDirection);
 
@@ -495,7 +497,7 @@ void Jester() {
     ballDirection = -1;
     ballColor = MAGENTA;
   }
-
+  setColor(teamColor);
   setColorOnFace(ballColor, ballFace);
   setColorOnFace(ALCHEMISTGREEN, 5);
 }
@@ -513,6 +515,8 @@ void Cleric() {
   
 
   setColor(OFF);
+
+  setColor(teamColor);
 
   setColorOnFace(dim(teamColor, 200), (healingFace + 1) % 6);
   setColorOnFace(dim(teamColor, 150), (healingFace + 2) % 6);
