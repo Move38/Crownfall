@@ -36,6 +36,7 @@ void loop() {
     case SETUP:
       health = 3;
       blessings = 2;
+      blessState = NOT_BLESSED;
       setupLoop();
       break;
     case RED_PLAY:
@@ -168,6 +169,9 @@ void setupLoop() {
   }
 
   blessState = NOT_BLESSED;
+  FOREACH_FACE(f) {
+    blessedNeighbors[f] = false;
+  }
 }
 
 void assignLoop() {
@@ -218,16 +222,16 @@ void playLoop() {
 
   if (buttonDoubleClicked())
   {
-    if (playRole == KING) 
+    if (playRole == KING)
     {
-         health--;
+      health--;
     }
 
-    else if (blessState == BLESSED) blessState = NOT_BLESSED;
+    else if (blessState == EXHAUSTED) blessState = NOT_BLESSED;
   }
 
   //~~CLERIC SPECIFIC INTERACTIONS~~
-  if (playRole == CLERIC) 
+  if (playRole == CLERIC)
   {
     ClericPlayLoop();
   }
@@ -247,29 +251,38 @@ void playLoop() {
       }
     }
   }
+
+  if (isAlone() && blessState == BLESSED) {
+    blessState = EXHAUSTED;
+  }
 }
 
 void ClericPlayLoop() {
-  if (isAlone())
+  if (isAlone() && blessings > 0)
   {
     blessState = BLESSING;
   }
 
-  for (byte face = 0; face != 6; face++) {
-    if (faceConnections[face] == true) { //I am connected to a neighbor on face X.
-      if (GetBlessing(getLastValueReceivedOnFace(face)) == BLESSED) //neighbor has been blessed.
-      {
-        if (blessedNeighbors[face] != true) //we didn't know he was blessed.
+  if (blessState == BLESSING) {
+    for (byte face = 0; face != 6; face++) {
+      if (faceConnections[face] == true) { //I am connected to a neighbor on face X.
+        if (GetBlessing(getLastValueReceivedOnFace(face)) == BLESSED) //neighbor has been blessed.
         {
-          blessings--;
-          blessedNeighbors[face] = true;
+          if (blessedNeighbors[face] != true) //we didn't know he was blessed.
+          {
+            blessings--;
+            blessedNeighbors[face] = true;
+            if (blessings <= 0) {
+              blessState = EXHAUSTED;
+            }
+          }
+        } else if (GetBlessing(getLastValueReceivedOnFace(face)) == NOT_BLESSED) { //neighbor at Face X is not blessed.
+          blessedNeighbors[face] = false;
         }
-      } else if (GetBlessing(getLastValueReceivedOnFace(face)) == NOT_BLESSED) { //neighbor at Face X is not blessed.
-        blessedNeighbors[face] = false;
+      } else
+      {
+        blessedNeighbors[face] = false; //empty neighbors are not blessed
       }
-    } else
-    {
-      blessedNeighbors[face] = true; //By default, I assume everyone is blessed!
     }
   }
 }
@@ -338,7 +351,6 @@ void roleDisplay() {
       Cleric();
       //setColor(teamColor);
       //setColorOnFace(OFF, 5);
-      if (blessState == BLESSING) divineShield();
       break;
     case GIANT:
       Giant();
@@ -355,7 +367,7 @@ void roleDisplay() {
 
   }
 
-  if (blessState == BLESSED) divineShield();
+  if (blessState == BLESSED || (blessState == EXHAUSTED && playRole != CLERIC)) divineShield();
 }
 
 void divineShield() {
@@ -484,7 +496,7 @@ Color ballColor;
 
 void Jester() {
 
-  
+
 
   if (animationTimer.isExpired()) {
     ballFace = ballFace + (1 * ballDirection);
@@ -515,7 +527,7 @@ void Cleric() {
 
     animationTimer.set(CLERIC_TIME);
   }
-  
+
   setColor(teamColor);
 
   switch (blessings) {
