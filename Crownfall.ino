@@ -35,6 +35,7 @@ void loop() {
   switch (gameState) {
     case SETUP:
       health = 3;
+      blessings = 2;
       setupLoop();
       break;
     case RED_PLAY:
