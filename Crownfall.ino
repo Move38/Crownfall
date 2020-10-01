@@ -207,8 +207,8 @@ void assignLoop() {
     else gameState = BLUE_PLAY;
   }
 
-  //~~SET CLERIC TO EXHAUSTED BY DEFAULT~~
-  if (playRole == CLERIC) blessState = EXHAUSTED;
+  //~~SET CLERIC TO NOT_BLESSED BY DEFAULT~~
+  if (playRole == CLERIC) blessState = NOT_BLESSED;
 }
 
 void playLoop() {
