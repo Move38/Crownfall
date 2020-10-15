@@ -1,8 +1,18 @@
-/**********************************************
-   CROWNFALL
-   Created by Rob Canciello, Nicole Polidore,
-   Jacob Surovsky, and Connor Wolf
- *********************************************/
+/*
+ *  Crownfall
+ *  by Rob Canciello, Nicole Polidore, Jacob Surovsky, and Connor Wolf 2020
+ *  Lead development by Rob Canciello and Connor Wolf
+ *  Additional development by Nicole Polidore, Jacob Surovsky, and Daniel King
+ *
+ *  --------------------
+ *  Blinks by Move38
+ *  Brought to life via Kickstarter 2018
+ *
+ *  @madewithblinks
+ *  www.move38.com
+ *  --------------------
+ */
+ 
 #define RED_COLOR makeColorHSB(15, 255, 255)
 #define BLUE_COLOR makeColorHSB(115, 255, 255)
 #define CROWN_YELLOW makeColorHSB(50, 200, 255)
