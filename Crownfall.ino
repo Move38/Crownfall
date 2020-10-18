@@ -384,7 +384,7 @@ void divineShield() {
   FOREACH_FACE(face) {
     byte faceBrightness = sin8_C((millis() + ((face + 1) * 1000)) / 4);
     if (faceBrightness > 200) {
-      setColorOnFace(dim(YELLOW, faceBrightness / 2), face);
+      setColorOnFace(dim(WHITE, faceBrightness / 2), face);
     }
   }
 }
